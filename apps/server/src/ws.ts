@@ -31,6 +31,7 @@ import {
   ClientSurface,
   ClientWebDeployment,
   CommandId,
+  HarnessStatusError,
   type DiscoveredLocalServerList,
   EventId,
   type EditorId,
@@ -157,6 +158,10 @@ import { requiredScopeForRpcMethod, requiredScopeForDeviceList } from "./auth/Rp
 import * as ProcessDiagnostics from "./diagnostics/ProcessDiagnostics.ts";
 import * as ProcessResourceMonitor from "./diagnostics/ProcessResourceMonitor.ts";
 import * as ResourceTelemetry from "./resourceTelemetry/ResourceTelemetry.ts";
+import * as HarnessStatus from "./provider/HarnessStatus.ts";
+import { ProjectionThreadRepositoryLive } from "./persistence/Layers/ProjectionThreads.ts";
+import { OrchestrationEventStoreLive } from "./persistence/Layers/OrchestrationEventStore.ts";
+import * as HarnessRuntime from "./persistence/ProviderSessionRuntime.ts";
 import * as HostResources from "./resourceTelemetry/HostResources.ts";
 import * as AnalyticsService from "./telemetry/AnalyticsService.ts";
 import * as UsageLimitSources from "./usage/UsageLimitSources.ts";
@@ -510,6 +515,7 @@ const makeWsRpcLayer = (
       const currentSessionId = currentSession.sessionId;
       const crypto = yield* Crypto.Crypto;
       const sql = yield* SqlClient.SqlClient;
+      const harnessStatus = yield* HarnessStatus.HarnessStatus;
       const projectionSnapshotQuery = yield* ProjectionSnapshotQuery.ProjectionSnapshotQuery;
       /** A reference's host-level link key; the project's own host where the ref names none. */
       const resolvePullRequestSyncKey = (reference: PullRequestRef) =>
@@ -2613,6 +2619,18 @@ const makeWsRpcLayer = (
           observeRpcEffect(WS_METHODS.serverProbe, Effect.succeed({}), {
             "rpc.aggregate": "server",
           }),
+        [WS_METHODS.serverGetHarnessStatus]: (input) =>
+          observeRpcEffect(
+            WS_METHODS.serverGetHarnessStatus,
+            harnessStatus
+              .get(input.threadId)
+              .pipe(
+                Effect.mapError(
+                  (cause) => new HarnessStatusError({ threadId: input.threadId, cause }),
+                ),
+              ),
+            { "rpc.aggregate": "server" },
+          ),
         [WS_METHODS.serverGetConfig]: (_input) =>
           observeRpcEffect(
             WS_METHODS.serverGetConfig,
@@ -4149,6 +4167,17 @@ export const websocketRpcRouteLayer = Layer.unwrap(
               previewAutomationBroker,
             ).pipe(
               Layer.provideMerge(RpcSerialization.layerJson),
+              Layer.provide(
+                HarnessStatus.layer.pipe(
+                  Layer.provide(
+                    Layer.mergeAll(
+                      ProjectionThreadRepositoryLive,
+                      HarnessRuntime.layer,
+                      OrchestrationEventStoreLive,
+                    ),
+                  ),
+                ),
+              ),
               Layer.provide(Layer.succeed(SqlClient.SqlClient, sql)),
               Layer.provide(AgentSessionScanner.layer),
               Layer.provide(ProviderMaintenanceRunner.layer),

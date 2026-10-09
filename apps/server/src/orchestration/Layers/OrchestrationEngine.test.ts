@@ -353,6 +353,7 @@ describe("OrchestrationEngine", () => {
           }),
         ),
       hasEventAfter: () => Effect.succeed(false),
+      getLatestHarnessSelectionChange: () => Effect.succeed(null),
       readAggregateRange: () => Stream.die("unused aggregate replay"),
       getAggregateReplayStats: () => Effect.die("unused aggregate replay stats"),
     };
@@ -1502,6 +1503,7 @@ describe("OrchestrationEngine", () => {
         return Stream.fromIterable(events);
       },
       hasEventAfter: () => Effect.succeed(false),
+      getLatestHarnessSelectionChange: () => Effect.succeed(null),
       readAggregateRange: () => Stream.die("unused aggregate replay"),
       getAggregateReplayStats: () => Effect.die("unused aggregate replay stats"),
     };
@@ -1742,6 +1744,7 @@ describe("OrchestrationEngine", () => {
         return Stream.fromIterable(events);
       },
       hasEventAfter: () => Effect.succeed(false),
+      getLatestHarnessSelectionChange: () => Effect.succeed(null),
       readAggregateRange: () => Stream.die("unused aggregate replay"),
       getAggregateReplayStats: () => Effect.die("unused aggregate replay stats"),
     };

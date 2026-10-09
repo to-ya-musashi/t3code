@@ -49,6 +49,7 @@ import {
   WorkspaceBreadcrumbText,
 } from "../WorkspaceBreadcrumb";
 import { cn } from "~/lib/utils";
+import { HarnessStatusBadge } from "./HarnessStatusBadge";
 import { useIsMobile } from "~/hooks/useMediaQuery";
 import { Button } from "../ui/button";
 import { Menu, MenuPopup, MenuSeparator, MenuTrigger } from "../ui/menu";
@@ -487,6 +488,11 @@ export const ChatHeader = memo(function ChatHeader({
           )}
         </WorkspaceBreadcrumbItem>
       </WorkspaceBreadcrumb>
+      <HarnessStatusBadge
+        environmentId={activeThreadEnvironmentId}
+        threadId={activeThreadId}
+        isServerThread={isServerThread}
+      />
       <div
         ref={headerActionsRef}
         data-chat-header-actions

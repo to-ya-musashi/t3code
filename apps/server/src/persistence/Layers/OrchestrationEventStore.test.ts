@@ -357,3 +357,38 @@ for (const reader of ["all", "aggregate"] as const) {
     ),
   );
 }
+
+it.effect("reads only the latest V1 harness selection/request metadata", () =>
+  Effect.gen(function* () {
+    const store = yield* OrchestrationEventStore;
+    const sql = yield* SqlClient.SqlClient;
+    const threadId = ThreadId.make("harness-barrier");
+    assert.equal(yield* store.getLatestHarnessSelectionChange(threadId), null);
+    let index = 0;
+    const insert = (type: string, payload: string, target = threadId) => sql`
+    INSERT INTO orchestration_events (event_id, aggregate_kind, stream_id, stream_version, event_type,
+      occurred_at, actor_kind, payload_json, metadata_json)
+    VALUES (${`harness-${++index}`}, 'thread', ${target}, ${index}, ${type}, '2026-10-01T00:00:00.000Z', 'server', ${payload}, '{}')
+  `;
+    yield* insert("thread.created", "{}");
+    const created = yield* store.getLatestHarnessSelectionChange(threadId);
+    assert.equal(created?.type, "thread.created");
+    yield* insert("thread.meta-updated", '{"title":"renamed"}');
+    yield* insert("thread.meta-updated", '{"modelSelection":null}');
+    yield* insert("thread.session-set", "{}");
+    assert.deepStrictEqual(yield* store.getLatestHarnessSelectionChange(threadId), created);
+    yield* insert("thread.meta-updated", '{"modelSelection":{"model":"B"}}');
+    yield* insert("thread.meta-updated", '{"modelSelection":{"model":"A"}}');
+    const selected = yield* store.getLatestHarnessSelectionChange(threadId);
+    assert.equal(selected?.type, "thread.meta-updated");
+    assert.isTrue(selected!.sequence > created!.sequence);
+    yield* insert("thread.turn-start-requested", "{}");
+    const request = yield* store.getLatestHarnessSelectionChange(threadId);
+    assert.equal(request?.type, "thread.turn-start-requested");
+    yield* insert("thread.turn-failed", "{}");
+    yield* insert("thread.turn-start-requested", "{}", ThreadId.make("other-thread"));
+    assert.deepStrictEqual(yield* store.getLatestHarnessSelectionChange(threadId), request);
+  }).pipe(
+    Effect.provide(OrchestrationEventStoreLive.pipe(Layer.provideMerge(SqlitePersistenceMemory))),
+  ),
+);

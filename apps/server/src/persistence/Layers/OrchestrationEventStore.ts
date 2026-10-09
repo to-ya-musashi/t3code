@@ -328,6 +328,38 @@ const makeEventStore = Effect.gen(function* () {
     );
   };
 
+  const findHarnessSelectionChange = SqlSchema.findOneOption({
+    Request: ThreadId,
+    Result: Schema.Struct({
+      sequence: NonNegativeInt,
+      occurredAt: IsoDateTime,
+      type: Schema.Literals([
+        "thread.created",
+        "thread.meta-updated",
+        "thread.turn-start-requested",
+      ]),
+    }),
+    execute: (threadId) => sql`
+      SELECT sequence, occurred_at AS "occurredAt", event_type AS "type"
+      FROM orchestration_events
+      WHERE aggregate_kind = 'thread' AND stream_id = ${threadId}
+        AND (event_type IN ('thread.created', 'thread.turn-start-requested')
+          OR (event_type = 'thread.meta-updated' AND json_type(payload_json, '$.modelSelection') = 'object'))
+      ORDER BY sequence DESC LIMIT 1
+    `,
+  });
+  const getLatestHarnessSelectionChange: OrchestrationEventStoreShape["getLatestHarnessSelectionChange"] =
+    (threadId) =>
+      findHarnessSelectionChange(threadId).pipe(
+        Effect.map(Option.getOrNull),
+        Effect.mapError(
+          toPersistenceSqlOrDecodeError(
+            "OrchestrationEventStore.getLatestHarnessSelectionChange:query",
+            "OrchestrationEventStore.getLatestHarnessSelectionChange:decodeRow",
+          ),
+        ),
+      );
+
   const findEventAfter = SqlSchema.findOneOption({
     Request: HasEventAfterRequestSchema,
     Result: Schema.Struct({ sequence: Schema.Number }),
@@ -423,6 +455,7 @@ const makeEventStore = Effect.gen(function* () {
     getAggregateReplayStats,
     readAll: () => readFromSequence(0, Number.MAX_SAFE_INTEGER),
     hasEventAfter,
+    getLatestHarnessSelectionChange,
   } satisfies OrchestrationEventStoreShape;
 });
 

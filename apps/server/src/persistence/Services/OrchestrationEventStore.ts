@@ -9,7 +9,7 @@
  *
  * @module OrchestrationEventStore
  */
-import { OrchestrationEvent } from "@t3tools/contracts";
+import { OrchestrationEvent, type ThreadId } from "@t3tools/contracts";
 import * as Context from "effect/Context";
 import type * as Effect from "effect/Effect";
 import type * as Stream from "effect/Stream";
@@ -34,6 +34,14 @@ export interface OrchestrationAggregateReplayStats {
  * OrchestrationEventStoreShape - Service API for orchestration event persistence.
  */
 export interface OrchestrationEventStoreShape {
+  readonly getLatestHarnessSelectionChange: (threadId: ThreadId) => Effect.Effect<
+    {
+      readonly sequence: number;
+      readonly occurredAt: string;
+      readonly type: "thread.created" | "thread.meta-updated" | "thread.turn-start-requested";
+    } | null,
+    OrchestrationEventStoreError
+  >;
   /**
    * Persist a new orchestration event.
    *

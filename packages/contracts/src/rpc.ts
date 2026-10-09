@@ -6,6 +6,7 @@ import {
   ChatGptHandoffState,
 } from "./providerSetup.ts";
 import * as Schema from "effect/Schema";
+import { HarnessStatusError, HarnessStatusInput, HarnessStatusResult } from "./harness.ts";
 import * as Rpc from "effect/unstable/rpc/Rpc";
 import * as RpcGroup from "effect/unstable/rpc/RpcGroup";
 import { NonNegativeInt, TrimmedNonEmptyString } from "./baseSchemas.ts";
@@ -380,6 +381,7 @@ export const WS_METHODS = {
 
   // Server meta
   serverProbe: "server.probe",
+  serverGetHarnessStatus: "server.getHarnessStatus",
   serverGetConfig: "server.getConfig",
   serverRefreshProviders: "server.refreshProviders",
   serverUpdateProvider: "server.updateProvider",
@@ -479,6 +481,12 @@ const WsServerProbeRpc = Rpc.make(WS_METHODS.serverProbe, {
   payload: Schema.Struct({}),
   success: Schema.Struct({}),
   error: EnvironmentAuthorizationError,
+});
+
+const WsServerGetHarnessStatusRpc = Rpc.make(WS_METHODS.serverGetHarnessStatus, {
+  payload: HarnessStatusInput,
+  success: HarnessStatusResult,
+  error: Schema.Union([HarnessStatusError, EnvironmentAuthorizationError]),
 });
 
 const WsServerGetConfigRpc = Rpc.make(WS_METHODS.serverGetConfig, {
@@ -1451,6 +1459,7 @@ const WsSubscribeResourceTelemetryRpc = Rpc.make(WS_METHODS.subscribeResourceTel
 
 export const WsRpcGroup = RpcGroup.make(
   WsServerProbeRpc,
+  WsServerGetHarnessStatusRpc,
   WsServerGetConfigRpc,
   WsServerRefreshProvidersRpc,
   WsServerUpdateProviderRpc,
