@@ -50,6 +50,7 @@ import {
 } from "../WorkspaceBreadcrumb";
 import { cn } from "~/lib/utils";
 import { HarnessStatusBadge } from "./HarnessStatusBadge";
+import { ProviderQuotaMeters } from "./ProviderQuotaMeters";
 import { useIsMobile } from "~/hooks/useMediaQuery";
 import { Button } from "../ui/button";
 import { Menu, MenuPopup, MenuSeparator, MenuTrigger } from "../ui/menu";
@@ -493,6 +494,7 @@ export const ChatHeader = memo(function ChatHeader({
         threadId={activeThreadId}
         isServerThread={isServerThread}
       />
+      <ProviderQuotaMeters environmentId={activeThreadEnvironmentId} />
       <div
         ref={headerActionsRef}
         data-chat-header-actions
